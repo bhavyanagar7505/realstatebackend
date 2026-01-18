@@ -2,6 +2,10 @@ const service = require("./superAdmin.service");
 
 /* ================= PROFILE ================= */
 exports.getProfile = async (req, res) => {
+  if (!req.user?.id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
   const profile = await service.getProfile(req.user.id);
   res.json(profile);
 };
@@ -49,6 +53,11 @@ exports.assignPermissions = async (req, res) => {
   res.json({ message: "Permissions updated" });
 };
 
+exports.getAdminPermissions = async (req, res) => {
+  const permissions = await service.getAdminPermissions(req.params.id);
+  res.json(permissions);
+};
+
 /* ================= ROLES ================= */
 exports.createRole = async (req, res) => {
   const role = await service.createRole(req.body);
@@ -86,12 +95,20 @@ exports.getDashboardStats = async (req, res) => {
 
 /* ================= UPDATE PROFILE ================= */
 exports.updateProfile = async (req, res) => {
+  if (!req.user?.id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
   const profile = await service.updateProfile(req.user.id, req.body);
   res.json({ message: "Profile updated", data: profile });
 };
 
 /* ================= CHANGE PASSWORD ================= */
 exports.changePassword = async (req, res) => {
+  if (!req.user?.id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
   const { currentPassword, newPassword } = req.body;
 
   await service.changePassword(
@@ -101,9 +118,4 @@ exports.changePassword = async (req, res) => {
   );
 
   res.json({ message: "Password updated successfully" });
-};
-
-exports.getAdminPermissions = async (req, res) => {
-  const permissions = await service.getAdminPermissions(req.params.id);
-  res.json(permissions);
 };

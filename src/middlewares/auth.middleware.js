@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 
 const prisma = new PrismaClient();
 
-module.exports = async function authMiddleware(req, res, next) {
+module.exports = async function requireAuth(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
 
@@ -15,7 +15,7 @@ module.exports = async function authMiddleware(req, res, next) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     req.user = {
-      id: decoded.id,
+      id: Number(decoded.id),
       role: decoded.role?.toUpperCase(),
       permissions: []
     };
@@ -28,7 +28,7 @@ module.exports = async function authMiddleware(req, res, next) {
     // ADMIN → load permissions
     if (req.user.role === "ADMIN") {
       const rows = await prisma.adminPermission.findMany({
-        where: { adminId: decoded.id }
+        where: { adminId: req.user.id }
       });
 
       const permissionSet = new Set();
@@ -58,4 +58,3 @@ module.exports = async function authMiddleware(req, res, next) {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
-

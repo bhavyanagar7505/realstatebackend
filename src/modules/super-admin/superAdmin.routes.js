@@ -1,10 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const {
-  requireAuth
-} = require("../../middlewares/auth.middleware");
-
+const requireAuth = require("../../middlewares/auth.middleware");
 const rbac = require("../../middlewares/rbac.middleware");
 const ROLES = require("../../constants/roles.constants");
 

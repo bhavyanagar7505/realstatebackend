@@ -5,7 +5,7 @@ const bcryptUtil = require("../../utils/bcrypt.util");
 /* ================= PROFILE ================= */
 exports.getProfile = (id) =>
   prisma.superAdmin.findUnique({
-    where: { id },
+    where: { id: Number(id) },
     select: { id: true, name: true, email: true }
   });
 
@@ -57,16 +57,11 @@ exports.updateAdmin = async (id, data) => {
 };
 
 /* ================= DELETE ADMIN (SOFT DELETE) ================= */
-/**
- * Soft delete admin (Super Admin only)
- * Marks admin as DELETED instead of removing DB record
- */
-exports.deleteAdmin = async (id) => {
-  return prisma.admin.update({
+exports.deleteAdmin = async (id) =>
+  prisma.admin.update({
     where: { id: Number(id) },
     data: { status: "DELETED" }
   });
-};
 
 exports.updateAdminStatus = (id, status) =>
   prisma.admin.update({
@@ -197,14 +192,14 @@ exports.getDashboardStats = async () => {
 };
 
 /* ================= UPDATE PROFILE ================= */
-exports.updateProfile = async (id, data) => {
-  const { name, email } = data;
-
-  return prisma.superAdmin.update({
-    where: { id },
-    data: { name, email }
+exports.updateProfile = async (id, data) =>
+  prisma.superAdmin.update({
+    where: { id: Number(id) },
+    data: {
+      name: data.name,
+      email: data.email
+    }
   });
-};
 
 /* ================= ADMIN PERMISSIONS ================= */
 exports.getAdminPermissions = (adminId) =>
