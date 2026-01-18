@@ -46,6 +46,7 @@ model Admin {
   bills           Bill[]
   bifurcations    Bifurcation[]
   settlements     Settlement[]
+  documents       ProjectDocument[]
 }
 
 model Role {
@@ -101,6 +102,7 @@ model Project {
   bifurcation     Bifurcation?
   settlements     Settlement[]
   unitSales       UnitSale[]
+  documents       ProjectDocument[]
 
   @@index([adminId])
 }
@@ -453,8 +455,9 @@ enum SaleStatus {
   COMPLETED
   CANCELLED
 }
+
 model ProjectDocument {
-  id        Int      @id @default(autoincrement())
+  id        Int @id @default(autoincrement())
   projectId Int
   adminId   Int
 
