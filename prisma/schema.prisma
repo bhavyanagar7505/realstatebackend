@@ -1,0 +1,475 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model SuperAdmin {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("super_admins")
+}
+
+model Admin {
+  id         Int      @id @default(autoincrement())
+  name       String
+  email      String   @unique
+  password   String
+  phone      String
+  profession String
+  address    String
+  city       String
+  state      String
+  country    String
+  zipCode    String
+  status     String   @default("ACTIVE")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  permissions     AdminPermission[]
+  projects        Project[]
+  projectFields   ProjectField[]
+  unitTypes       UnitType[]
+  partners        Partner[]
+  investments     Investment[]
+  inventoryItems  InventoryItem[]
+  inventoryUsages InventoryUsage[]
+  vendors         Vendor[]
+  bills           Bill[]
+  bifurcations    Bifurcation[]
+  settlements     Settlement[]
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model AdminPermission {
+  id        Int     @id @default(autoincrement())
+  adminId   Int
+  module    String
+  canView   Boolean @default(false)
+  canCreate Boolean @default(false)
+  canUpdate Boolean @default(false)
+  canDelete Boolean @default(false)
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@unique([adminId, module])
+}
+
+model Project {
+  id      Int @id @default(autoincrement())
+  adminId Int
+
+  name     String
+  location String
+
+  totalValuation     Float
+  landCost           Float
+  infrastructureCost Float
+
+  startDate          DateTime
+  expectedCompletion Int
+  possessionDate     DateTime
+
+  status String @default("PLANNING")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  admin  Admin               @relation(fields: [adminId], references: [id])
+  fields ProjectFieldValue[]
+
+  units           Unit[]
+  partners        PartnerProject[]
+  investments     Investment[]
+  inventoryItems  InventoryItem[]
+  inventoryUsages InventoryUsage[]
+  bills           Bill[]
+  bifurcation     Bifurcation?
+  settlements     Settlement[]
+  unitSales       UnitSale[]
+
+  @@index([adminId])
+}
+
+model ProjectField {
+  id      Int @id @default(autoincrement())
+  adminId Int
+
+  name      String
+  fieldType ProjectFieldType
+  category  ProjectFieldCategory
+
+  required Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  admin Admin @relation(fields: [adminId], references: [id])
+
+  values ProjectFieldValue[]
+}
+
+model ProjectFieldValue {
+  id        Int @id @default(autoincrement())
+  projectId Int
+  fieldId   Int
+
+  value String // stored as string (parsed by type)
+
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  field   ProjectField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, fieldId])
+}
+
+enum ProjectFieldType {
+  TEXT
+  NUMBER
+  BOOLEAN
+  DATE
+}
+
+enum ProjectFieldCategory {
+  GENERAL // amenities, facilities, notes
+  COMPLIANCE // RERA, Fire, Govt
+}
+
+model UnitType {
+  id        Int      @id @default(autoincrement())
+  adminId   Int
+  name      String // "1 BHK", "2 BHK", "Shop", etc.
+  createdAt DateTime @default(now())
+
+  admin Admin  @relation(fields: [adminId], references: [id])
+  units Unit[]
+
+  @@unique([adminId, name])
+}
+
+model Unit {
+  id         Int @id @default(autoincrement())
+  projectId  Int
+  unitTypeId Int
+
+  unitNumber   String // A-101, B-203
+  baseCost     Float
+  sellingPrice Float
+
+  status UnitStatus @default(AVAILABLE)
+  sale   UnitSale?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  unitType UnitType @relation(fields: [unitTypeId], references: [id])
+
+  @@index([projectId])
+}
+
+enum UnitStatus {
+  AVAILABLE
+  SOLD
+}
+
+model Partner {
+  id           Int           @id @default(autoincrement())
+  name         String
+  email        String        @unique
+  phone        String
+  address      String?
+  businessName String?
+  businessType String?
+  hasIdProof   Boolean       @default(false)
+  status       PartnerStatus @default(ACTIVE)
+
+  adminId Int
+  admin   Admin @relation(fields: [adminId], references: [id])
+
+  projects            PartnerProject[]
+  investments         Investment[]
+  bifurcationPartners BifurcationPartner[]
+  settlements         Settlement[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+enum PartnerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model PartnerProject {
+  id Int @id @default(autoincrement())
+
+  partnerId Int
+  projectId Int
+
+  investmentAmount Float
+  ownershipPercent Float
+
+  partner Partner @relation(fields: [partnerId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([partnerId, projectId])
+}
+
+model Investment {
+  id Int @id @default(autoincrement())
+
+  adminId   Int
+  partnerId Int
+  projectId Int
+
+  amount Float
+  notes  String?
+  locked Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  admin   Admin   @relation(fields: [adminId], references: [id])
+  partner Partner @relation(fields: [partnerId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@index([partnerId])
+  @@index([projectId])
+}
+
+model InventoryItem {
+  id      Int @id @default(autoincrement())
+  adminId Int
+
+  name String // Cement, Steel, Bricks
+  unit InventoryUnit
+  rate Float // cost per unit
+
+  createdAt DateTime @default(now())
+
+  admin Admin @relation(fields: [adminId], references: [id])
+
+  usages    InventoryUsage[]
+  Project   Project?         @relation(fields: [projectId], references: [id])
+  projectId Int?
+
+  @@unique([adminId, name])
+}
+
+model InventoryUsage {
+  id Int @id @default(autoincrement())
+
+  adminId   Int
+  projectId Int
+  itemId    Int
+
+  quantity Float
+  cost     Float
+
+  createdAt DateTime @default(now())
+
+  admin   Admin         @relation(fields: [adminId], references: [id])
+  project Project       @relation(fields: [projectId], references: [id])
+  item    InventoryItem @relation(fields: [itemId], references: [id])
+}
+
+enum InventoryUnit {
+  BAGS
+  TONS
+  PIECES
+  KG
+  LITERS
+}
+
+model Vendor {
+  id      Int @id @default(autoincrement())
+  adminId Int
+
+  name    String
+  phone   String?
+  email   String?
+  address String?
+
+  gstNumber String? // optional
+  gstType   GstType? // REGISTERED / UNREGISTERED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  admin Admin  @relation(fields: [adminId], references: [id])
+  bills Bill[]
+
+  @@unique([adminId, name])
+}
+
+enum GstType {
+  REGISTERED
+  UNREGISTERED
+}
+
+model Bill {
+  id Int @id @default(autoincrement())
+
+  adminId   Int
+  projectId Int
+  vendorId  Int
+
+  billNumber  String?
+  baseAmount  Float
+  gstAmount   Float   @default(0)
+  totalAmount Float
+
+  status BillStatus @default(PENDING)
+  notes  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  admin   Admin   @relation(fields: [adminId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+  vendor  Vendor  @relation(fields: [vendorId], references: [id])
+
+  @@index([adminId, projectId])
+}
+
+enum BillStatus {
+  PENDING
+  PARTIAL
+  PAID
+}
+
+model Bifurcation {
+  id        Int @id @default(autoincrement())
+  adminId   Int
+  projectId Int
+
+  totalInvestment Float
+  totalCost       Float
+  totalRevenue    Float
+  profitOrLoss    Float
+
+  locked    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+  admin   Admin   @relation(fields: [adminId], references: [id])
+
+  partners BifurcationPartner[]
+
+  @@unique([projectId])
+}
+
+model BifurcationPartner {
+  id            Int @id @default(autoincrement())
+  bifurcationId Int
+  partnerId     Int
+
+  investmentAmount Float
+  ownershipPercent Float
+  shareAmount      Float
+
+  bifurcation Bifurcation @relation(fields: [bifurcationId], references: [id])
+  partner     Partner     @relation(fields: [partnerId], references: [id])
+}
+
+model Settlement {
+  id        Int @id @default(autoincrement())
+  adminId   Int
+  projectId Int
+  partnerId Int
+
+  amount    Float
+  notes     String?
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+  partner Partner @relation(fields: [partnerId], references: [id])
+  admin   Admin   @relation(fields: [adminId], references: [id])
+
+  @@index([projectId])
+  @@index([partnerId])
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String?
+  phone     String
+  address   String?
+  createdAt DateTime @default(now())
+
+  sales UnitSale[]
+}
+
+model UnitSale {
+  id         Int @id @default(autoincrement())
+  projectId  Int
+  unitId     Int
+  customerId Int
+
+  salePrice   Float
+  bookingDate DateTime
+  status      SaleStatus @default(BOOKED)
+
+  createdAt DateTime @default(now())
+
+  project  Project   @relation(fields: [projectId], references: [id])
+  unit     Unit      @relation(fields: [unitId], references: [id])
+  customer Customer  @relation(fields: [customerId], references: [id])
+  payments Payment[]
+
+  @@unique([unitId]) // one sale per unit
+}
+
+model Payment {
+  id          Int      @id @default(autoincrement())
+  saleId      Int
+  amount      Float
+  paymentDate DateTime
+  mode        String
+  reference   String?
+
+  createdAt DateTime @default(now())
+
+  sale UnitSale @relation(fields: [saleId], references: [id])
+}
+
+enum SaleStatus {
+  BOOKED
+  PARTIAL
+  COMPLETED
+  CANCELLED
+}
+model ProjectDocument {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  adminId   Int
+
+  name String
+  type DocumentType
+  url  String
+
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+  admin   Admin   @relation(fields: [adminId], references: [id])
+}
+
+enum DocumentType {
+  IMAGE
+  PDF
+  DRAWING
+}
