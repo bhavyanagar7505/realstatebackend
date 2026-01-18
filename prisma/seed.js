@@ -1,15 +1,19 @@
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcrypt");
 
-const prisma = new PrismaClient({});
+const prisma = new PrismaClient();
 
 async function main() {
   const hashedPassword = await bcrypt.hash("hisabwala123", 12);
 
   await prisma.superAdmin.upsert({
     where: { email: "hisabwala@gmail.com" },
-    update: {},
+    update: {
+      name: "Super Admin",
+      password: hashedPassword
+    },
     create: {
+      name: "Super Admin",
       email: "hisabwala@gmail.com",
       password: hashedPassword
     }
@@ -19,5 +23,10 @@ async function main() {
 }
 
 main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .catch((e) => {
+    console.error("Seed failed:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
